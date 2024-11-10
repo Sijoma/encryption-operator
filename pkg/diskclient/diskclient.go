@@ -75,7 +75,10 @@ func (d GCP) getDisk(ctx context.Context, pv v1.PersistentVolume) (*computepb.Di
 	path := strings.Split(volumeHandle, "/")
 	project := path[1]
 	regionOrZone := path[3]
-	regionOrZoneDetect := detectZoneOrRegion(regionOrZone)
+	regionOrZoneDetect, err := detectZoneOrRegion(regionOrZone)
+	if err != nil {
+		return nil, err
+	}
 
 	switch regionOrZoneDetect {
 	case "zone":
@@ -90,26 +93,24 @@ func (d GCP) getDisk(ctx context.Context, pv v1.PersistentVolume) (*computepb.Di
 			Project: project,
 			Region:  regionOrZone,
 		})
-	case "invalid":
-		return nil, fmt.Errorf("unable to detect if disk is zonal or regional")
 	default:
 		return nil, fmt.Errorf("nothing matched")
 	}
 }
 
-func detectZoneOrRegion(input string) string {
+func detectZoneOrRegion(input string) (string, error) {
 	zonePattern := `^[a-z]+-[a-z]+\d-[a-z]$`
 	regionPattern := `^[a-z]+-[a-z]+\d$`
 
 	isZone, _ := regexp.MatchString(zonePattern, input)
 	if isZone {
-		return "zone"
+		return "zone", nil
 	}
 
 	isRegion, _ := regexp.MatchString(regionPattern, input)
 	if isRegion {
-		return "region"
+		return "region", nil
 	}
 
-	return "invalid"
+	return "", fmt.Errorf("unable to detect region from input: %s", input)
 }
