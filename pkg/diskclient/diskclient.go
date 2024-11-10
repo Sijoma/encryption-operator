@@ -26,7 +26,7 @@ func NewGCP(ctx context.Context) (*GCP, error) {
 	if err != nil {
 		return nil, err
 	}
-	diskClient := DiskClient{
+	diskClient := GCP{
 		zonal:    zonalClient,
 		regional: regionalClient,
 	}
