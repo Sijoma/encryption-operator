@@ -2,14 +2,37 @@
 
 This operator reconciles persistent volumes inside Kubernetes. It then enriches the annotations with the following information.
 
+
+
+## Description
+This requires GCP Disk API permissions. I have not tested which permissions exactly it needs - most likely a simple READ on the disks is enough.
+
 ```
     sijoma.dev/kms-key-name: projects/<projectName>/locations/<region>/keyRings/<keyRing>/cryptoKeys/<keyID>/cryptoKeyVersions/1
     sijoma.dev/kms-key-version: "1"
 ```
 
+| annotation | description    |
+| ------- |----------------|
+| sijoma.dev/kms-key-name | the actual kms key in use of the disk, this includes the key version
+| sijoma.dev/kms-key-version | the current key version in use of the disk, this can be lower than the latest key version
 
-## Description
-This requires GCP Disk API permissions. I have not tested which permissions exactly it needs - most likely a simple READ on the disks is enough.
+
+When your KMS key rotates to a new version, it would not be reflected on the disk annotations.
+Disks continue to use the old key until they are migrated to the new version.
+
+You will need to: 
+```
+1. Rotate your Cloud KMS key.
+2. Create a snapshot of the encrypted disk.
+3. Use the new snapshot to create a new disk with the key rotated in the preceding step.
+4. Replace the disk attached to your VM that uses the old encryption key.
+```
+
+The process in GCP is documented here: https://cloud.google.com/compute/docs/disks/customer-managed-encryption#rotate_encryption
+
+After this is done, the controller will update the PVC labels.
+This makes it easier to know from inside K8s which kms key version is used.
 
 ## Getting Started
 
