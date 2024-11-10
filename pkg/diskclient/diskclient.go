@@ -5,12 +5,9 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-	"time"
 
 	compute "cloud.google.com/go/compute/apiv1"
 	"cloud.google.com/go/compute/apiv1/computepb"
-	kms "cloud.google.com/go/kms/apiv1"
-	"cloud.google.com/go/kms/apiv1/kmspb"
 	v1 "k8s.io/api/core/v1"
 )
 
@@ -61,14 +58,9 @@ func (d GCP) GetEncryptionKeyPrincipal(ctx context.Context, pv v1.PersistentVolu
 	result.keyPrincipal = disk.DiskEncryptionKey.GetKmsKeyName()
 	// Get KeyID
 	keyParts := strings.Split(result.keyPrincipal, "/cryptoKeyVersions/")
-	keyID := keyParts[0]
 	keyVersion := keyParts[1]
 	if keyVersion == "" {
 		return nil, fmt.Errorf("invalid key version")
-	}
-	keyVersion, err := getKeyVersion(result.keyPrincipal)
-	if err != nil {
-		return nil, err
 	}
 	result.keyVersion = keyVersion
 
@@ -85,33 +77,24 @@ func (d GCP) getDisk(ctx context.Context, pv v1.PersistentVolume) (*computepb.Di
 	regionOrZone := path[3]
 	regionOrZoneDetect := detectZoneOrRegion(regionOrZone)
 
-	var disk *computepb.Disk
-	var err error
 	switch regionOrZoneDetect {
 	case "zone":
-		disk, err = d.zonal.Get(ctx, &computepb.GetDiskRequest{
+		return d.zonal.Get(ctx, &computepb.GetDiskRequest{
 			Disk:    pv.Name,
 			Project: project,
 			Zone:    regionOrZone,
 		})
-		if err != nil {
-			return nil, err
-		}
 	case "region":
-		disk, err = d.regional.Get(ctx, &computepb.GetRegionDiskRequest{
+		return d.regional.Get(ctx, &computepb.GetRegionDiskRequest{
 			Disk:    pv.Name,
 			Project: project,
 			Region:  regionOrZone,
 		})
-		if err != nil {
-			return nil, err
-		}
 	case "invalid":
 		return nil, fmt.Errorf("unable to detect if disk is zonal or regional")
 	default:
 		return nil, fmt.Errorf("nothing matched")
 	}
-	return disk, nil
 }
 
 func detectZoneOrRegion(input string) string {
