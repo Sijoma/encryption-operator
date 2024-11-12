@@ -10,7 +10,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -60,13 +59,8 @@ func (r *PersistentVolumeReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	}
 
 	if encryptionPrincipal.IsEncrypted() {
-		var pvc corev1.PersistentVolumeClaim
-		err = r.Client.Get(ctx, types.NamespacedName{Name: pv.Spec.ClaimRef.Name, Namespace: pv.Spec.ClaimRef.Namespace}, &pvc)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		logger.Info("annotating PVC with kms key ", "key", encryptionPrincipal.KeyPrincipal())
-		err := r.applyAnnotations(ctx, pvc, *encryptionPrincipal)
+		logger.Info("annotating PV with kms key ", "key", encryptionPrincipal.KeyPrincipal())
+		err := r.applyAnnotations(ctx, pv, *encryptionPrincipal)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -79,11 +73,11 @@ const group = "sijoma.dev"
 const keyNameAnnotation = group + "/kms-key-name"
 const keyVersionAnnotation = group + "/kms-key-version"
 
-func (r *PersistentVolumeReconciler) applyAnnotations(ctx context.Context, pvc corev1.PersistentVolumeClaim, principal diskclient.EncryptionKeyPrincipal) error {
-	pvc.Annotations[keyNameAnnotation] = principal.KeyPrincipal()
-	pvc.Annotations[keyVersionAnnotation] = principal.KeyVersion()
+func (r *PersistentVolumeReconciler) applyAnnotations(ctx context.Context, pv corev1.PersistentVolume, principal diskclient.EncryptionKeyPrincipal) error {
+	pv.Annotations[keyNameAnnotation] = principal.KeyPrincipal()
+	pv.Annotations[keyVersionAnnotation] = principal.KeyVersion()
 
-	err := r.Client.Update(ctx, &pvc)
+	err := r.Client.Update(ctx, &pv)
 	if err != nil {
 		return err
 	}
