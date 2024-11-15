@@ -3,7 +3,7 @@ module github.com/sijoma/encryption-operator
 go 1.23.0
 
 require (
-	cloud.google.com/go/compute v1.28.3
+	cloud.google.com/go/compute v1.29.0
 	github.com/onsi/ginkgo/v2 v2.19.0
 	github.com/onsi/gomega v1.33.1
 	k8s.io/api v0.31.2
